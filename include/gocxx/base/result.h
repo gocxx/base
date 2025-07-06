@@ -19,6 +19,24 @@ struct Result {
     T value{};  ///< The result value (may be default-initialized).
     std::shared_ptr<gocxx::errors::Error> err;  ///< Error, if any.
 
+    /// @brief Constructs a Result with a value and no error.
+    /// This is the success case, similar to Go's `return value, nil`.
+    Result(T value) : value(std::move(value)), err(nullptr) {}
+
+    /// @brief Constructs a Result with an error and no value.
+    /// This is the error case, similar to Go's `return nil, err`.
+    Result(std::shared_ptr<gocxx::errors::Error> error)
+        : value(), err(std::move(error)) {
+    }
+
+    /// @brief Constructs a Result with both a value and an error.
+    /// This is used when an operation returns a value along with an error.
+    Result(T value, std::shared_ptr<gocxx::errors::Error> error)
+        : value(std::move(value)), err(std::move(error)) {
+    }
+
+    Result() = default;  
+
     /// @brief Returns true if the operation was successful.
     bool Ok() const noexcept { return !err; }
 
