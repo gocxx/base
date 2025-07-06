@@ -15,6 +15,14 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(gocxx_errors)
 
+FetchContent_Declare(
+    gocxx_sync
+    GIT_REPOSITORY https://github.com/gocxx/sync.git
+    GIT_TAG        v0.0.1
+)
+
+FetchContent_MakeAvailable(gocxx_sync)
+
 add_library(gocxx_base INTERFACE)
 
 target_include_directories(gocxx_base INTERFACE
@@ -22,7 +30,7 @@ target_include_directories(gocxx_base INTERFACE
     $<INSTALL_INTERFACE:include>
 )
 
-target_link_libraries(gocxx_base INTERFACE gocxx_errors)
+target_link_libraries(gocxx_base INTERFACE gocxx_errors gocxx_sync)
 
 install(DIRECTORY include/ DESTINATION include)
 
@@ -35,7 +43,7 @@ configure_file(
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/gocxx_base.pc
         DESTINATION lib/pkgconfig)
 
-if(ENABLE_TESTS)
+if(GOCXX_ENABLE_TESTS)
     enable_testing()
     file(GLOB BASE_TESTS CONFIGURE_DEPENDS tests/*.cpp)
 

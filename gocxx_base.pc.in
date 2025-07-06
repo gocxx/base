@@ -5,4 +5,6 @@ includedir=${prefix}/include
 Name: gocxx_base
 Description: Core base utilities for the gocxx project (defer, result)
 Version: @PROJECT_VERSION@
+Requires: gocxx_errors gocxx_sync
 Cflags: -I${includedir}
+
