@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
-#include "gocxx/defer.h"
-#include "gocxx/result.h"
+#include "gocxx/base/defer.h"
+#include "gocxx/base/result.h"
 
 using namespace gocxx::base;
 using namespace gocxx::errors;

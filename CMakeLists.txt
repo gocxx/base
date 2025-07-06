@@ -24,7 +24,7 @@ target_include_directories(gocxx_base INTERFACE
 
 target_link_libraries(gocxx_base INTERFACE gocxx_errors)
 
-install(DIRECTORY include DESTINATION include)
+install(DIRECTORY include/ DESTINATION include)
 
 configure_file(
     ${CMAKE_CURRENT_SOURCE_DIR}/gocxx_base.pc.in
