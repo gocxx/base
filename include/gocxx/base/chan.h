@@ -1,17 +1,20 @@
 ﻿#pragma once
-#include <gocxx/sync/sync.h>
+#include <gocxx/sync/sync.h>  
 #include <queue>
 #include <optional>
+#include <memory>
 #include <stdexcept>
-#include <utility> // for std::move
+#include <utility>
 
 namespace gocxx::base {
 
     template<typename T>
-    class Chan {
+    class Chan : public std::enable_shared_from_this<Chan<T>> {
     public:
-        explicit Chan(std::size_t bufferSize = 0)
-            : bufferSize_(bufferSize), closed_(false) {
+        using value_type = T;
+
+        static std::shared_ptr<Chan<T>> Make(std::size_t bufferSize = 0) {
+            return std::shared_ptr<Chan<T>>(new Chan<T>(bufferSize));
         }
 
         void send(T&& value) {
@@ -32,7 +35,6 @@ namespace gocxx::base {
                     cond_send_.Wait(lock);
                 }
                 if (closed_) throw std::runtime_error("send on closed channel");
-
             }
             else {
                 while (!closed_ && queue_.size() >= bufferSize_) {
@@ -63,25 +65,20 @@ namespace gocxx::base {
 
                 hasReceiver_ = false;
 
-                if (!hasData_ && closed_) {
-                    return std::nullopt;
-                }
+                if (!hasData_ && closed_) return std::nullopt;
 
                 auto val = std::move(data_.value());
                 data_.reset();
                 hasData_ = false;
                 cond_send_.NotifyOne();
                 return val;
-
             }
             else {
                 while (!closed_ && queue_.empty()) {
                     cond_recv_.Wait(lock);
                 }
 
-                if (queue_.empty() && closed_) {
-                    return std::nullopt;
-                }
+                if (queue_.empty() && closed_) return std::nullopt;
 
                 auto val = std::move(queue_.front());
                 queue_.pop();
@@ -97,39 +94,70 @@ namespace gocxx::base {
             cond_send_.NotifyAll();
         }
 
-        bool isClosed() {
+        bool isClosed() const {
             gocxx::sync::Lock lock(mutex_);
             return closed_;
         }
 
-        Chan<T>& operator<<(const T& value) {
-            send(value);
-            return *this;
-        }
-
-        Chan<T>& operator<<(T&& value) {
-            send(std::move(value));
-            return *this;
-        }
-
-        Chan<T>& operator>>(T& out) {
-            auto val = recv();
-            if (!val) throw std::runtime_error("receive on closed channel");
-            out = std::move(*val);
-            return *this;
-        }
-
     private:
-        gocxx::sync::Mutex mutex_;
+        explicit Chan(std::size_t bufferSize)
+            : bufferSize_(bufferSize), closed_(false) {
+        }
+
+        Chan() = delete;
+        Chan(const Chan&) = delete;
+        Chan& operator=(const Chan&) = delete;
+        Chan(Chan&&) = delete;
+        Chan& operator=(Chan&&) = delete;
+
+        mutable gocxx::sync::Mutex mutex_;
         gocxx::sync::Cond cond_recv_, cond_send_;
         std::size_t bufferSize_;
         bool closed_;
 
+        // For unbuffered channel
         std::optional<T> data_;
         bool hasData_ = false;
         bool hasReceiver_ = false;
 
+        // For buffered channel
         std::queue<T> queue_;
     };
+
+    // Aliases and operator sugar
+    template<typename T>
+    using ChanPtr = std::shared_ptr<Chan<T>>;
+
+    template<typename T>
+    ChanPtr<T>& operator<<(ChanPtr<T>& ch, const T& val) {
+        ch->send(val);
+        return ch;
+    }
+
+    // Generic, SFINAE-guarded << overload
+    template<typename T, typename U>
+    std::enable_if_t<std::is_constructible_v<T, U>, ChanPtr<T>&> operator<<(ChanPtr<T>& ch, U&& value) {
+        ch->send(T(std::forward<U>(value)));
+        return ch;
+    }
+
+    template<typename T>
+    ChanPtr<T>& operator<<(ChanPtr<T>& ch, T&& val) {
+        ch->send(std::move(val));
+        return ch;
+    }
+
+    template<typename T>
+    ChanPtr<T>& operator>>(ChanPtr<T>& ch, T& out) {
+        auto val = ch->recv();
+        if (!val) throw std::runtime_error("receive on closed channel");
+        out = std::move(*val);
+        return ch;
+    }
+
+    template<typename T>
+    ChanPtr<T> make_chan(std::size_t bufferSize = 0) {
+        return Chan<T>::Make(bufferSize);
+    }
 
 } // namespace gocxx::base

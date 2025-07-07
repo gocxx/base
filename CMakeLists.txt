@@ -45,12 +45,17 @@ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/gocxx_base.pc
 
 if(GOCXX_ENABLE_TESTS)
     enable_testing()
+    FetchContent_Declare(
+    googletest
+    URL https://github.com/google/googletest/archive/refs/tags/v1.17.0.zip
+    )
+    set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+    FetchContent_MakeAvailable(googletest)
+
     file(GLOB BASE_TESTS CONFIGURE_DEPENDS tests/*.cpp)
 
     add_executable(gocxx_base_tests ${BASE_TESTS})
     target_include_directories(gocxx_base_tests PRIVATE include)
     target_link_libraries(gocxx_base_tests gtest gtest_main gocxx_base)
 
-    include(GoogleTest)
-    gtest_discover_tests(gocxx_base_tests)
 endif()
